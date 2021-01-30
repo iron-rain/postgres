@@ -1,0 +1,151 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.postgres.name }}
+  labels:
+    deployment: {{ .Values.postgres.name }}-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+        app: {{ .Values.postgres.name }}-app
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.postgres.name }}-app
+    spec:
+      securityContext:
+        fsGroup: 999
+      {{ if .Values.postgres.persistence.enabled }}
+      volumes:
+      - name: postgres-socket
+        emptyDir: {}
+      - name: {{ .Values.postgres.name }}-db
+        persistentVolumeClaim:
+          claimName: {{ .Values.postgres.name }}-db-data
+      {{ if .Values.pgbackrest.enabled }}
+      - name: pgbackrest-config
+        configMap:
+          name: {{ .Values.postgres.name }}-pgbackrest-config
+          items:
+          - key: pgbackrest.conf
+            path: pgbackrest.conf          
+      {{ if eq .Values.pgbackrest.backup.type "volume" }}
+      - name: {{ .Values.postgres.name }}-backup
+        persistentVolumeClaim:
+          claimName: {{ .Values.postgres.name }}-db-backup
+      {{ end }}
+      {{ if .Values.pgbackrest.enabled }}
+      - name: postgresql-config
+        configMap:
+          name: {{ .Values.postgres.name }}-pgbackrest-postgresql-config
+          items:
+          - key: postgresql.conf
+            path: postgresql.conf
+          - key: entrypoint.sh
+            path: entrypoint.sh
+            mode: 0755
+          - key: restore-point.sh
+            path: restore-point.sh
+            mode: 0755
+          - key: backup-point.sh
+            path: backup-point.sh
+            mode: 0755            
+          - key: backup-schedule.py
+            path: backup-schedule.py
+            mode: 0755                      
+      {{ end }}
+      {{ end }}
+      {{ end }}
+      initContainers:
+      {{ if .Values.pgbackrest.restore.enabled }}
+      {{ if .Values.pgbackrest.enabled }}
+      - name: {{ .Values.postgres.name }}-pgbackrest-restore
+        image: {{ .Values.postgres.image.repository }}:{{ .Values.postgres.image.tag }}
+        imagePullPolicy: Always
+        securityContext:
+          runAsUser: 999
+        volumeMounts:
+        - mountPath: /var/lib/postgresql/data
+          name: {{ .Values.postgres.name }}-db
+        - mountPath: /var/run/postgresql/
+          name: postgres-socket
+        {{ if eq .Values.pgbackrest.backup.type "volume" }}
+        - mountPath: /backup
+          name: {{ .Values.postgres.name }}-backup   
+        {{ end }}
+        - name: pgbackrest-config
+          mountPath: "/etc/pgbackrest"
+          readOnly: true
+        - name: postgresql-config
+          mountPath: /entrypoint.d
+        command:
+          - sh
+          - entrypoint.d/restore-point.sh 
+      {{ end }}
+      {{ end }}
+      containers:
+      - name: {{ .Values.postgres.name }}
+        image: {{ .Values.postgres.image.repository }}:{{ .Values.postgres.image.tag }}
+        imagePullPolicy: Always
+        securityContext:
+          runAsUser: 999
+        ports:
+        - containerPort: 5432
+          name: tcp-5432
+        env:
+          - name: PGDATA
+            value: /var/lib/postgresql/data/pgdata
+          - name: POSTGRES_USER
+            value: {{ .Values.postgres.user.name }}
+          - name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.postgres.user.passwordSecret }}
+                key: POSTGRES_PASSWORD
+        {{ if .Values.postgres.persistence.enabled }}
+        volumeMounts:
+        - mountPath: /var/lib/postgresql/data
+          name: {{ .Values.postgres.name }}-db
+        - mountPath: /var/run/postgresql/
+          name: postgres-socket
+        {{ end }}
+        {{ if .Values.pgbackrest.enabled }}
+        - name: pgbackrest-config
+          mountPath: "/etc/pgbackrest"
+          readOnly: true
+        - name: postgresql-config
+          mountPath: "/etc/postgres"
+          readOnly: true
+        {{ if eq .Values.pgbackrest.backup.type "volume" }}
+        - mountPath: /backup
+          name: {{ .Values.postgres.name }}-backup         
+        {{ end }}   
+        command:
+          - sh 
+          - /etc/postgres/entrypoint.sh
+        {{ end }}
+      {{ if .Values.pgbackrest.enabled }}
+      - name: {{ .Values.postgres.name }}-pgbackrest-backup
+        image: {{ .Values.postgres.image.repository }}:{{ .Values.postgres.image.tag }}
+        imagePullPolicy: Always
+        securityContext:
+          runAsUser: 999
+        volumeMounts:
+        - mountPath: /var/lib/postgresql/data
+          name: {{ .Values.postgres.name }}-db
+        - mountPath: /var/run/postgresql/
+          name: postgres-socket
+        {{ if eq .Values.pgbackrest.backup.type "volume" }}
+        - mountPath: /backup
+          name: {{ .Values.postgres.name }}-backup   
+        {{ end }}
+        - name: pgbackrest-config
+          mountPath: "/etc/pgbackrest"
+          readOnly: true 
+        - name: postgresql-config
+          mountPath: /entrypoint.d          
+        command:
+          - python
+          - /entrypoint.d/backup-schedule.py
+      {{ end }}

@@ -1,0 +1,43 @@
+# Iron Rain Postgres
+
+## Demo Secrets ##
+secrets:
+  demo:
+    postgres:
+      enabled: true
+      name: postgres-secrets
+      
+postgres:
+  name: postgres
+  image:
+    repository: ironrainio/postgres
+    tag: 12
+  user:
+    name: postgres
+    # KeyName is POSTGRES_PASSWORD
+    passwordSecret: postgres-secrets
+  persistence:
+    enabled: true
+    size: 1Gi
+    storageClass: 'longhorn'
+
+pgbackrest:
+  enabled: true
+  restore:
+    enabled: true
+  backup:
+    type: s3
+    settings:
+      retentionFull: 2
+      retentionDiff: 24
+    volumeConfig:
+      path: ''
+    s3Config:
+      bucket: postgres-backup
+      accessKey: minioadmin
+      secretKey: minioadmin
+      path: ''
+      endpoint: 192.168.0.179
+      port: 9000
+      region: minio
+      

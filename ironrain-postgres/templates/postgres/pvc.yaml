@@ -1,0 +1,29 @@
+{{ if .Values.postgres.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.postgres.name }}-db-data
+spec:
+  storageClassName: {{ .Values.postgres.persistence.storageClass }}
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.postgres.persistence.size }}
+{{ end }}
+---
+{{ if .Values.pgbackrest.enabled }}
+{{ if eq .Values.pgbackrest.backup.type "volume" }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.postgres.name }}-db-backup
+spec:
+  storageClassName: {{ .Values.postgres.persistence.storageClass }}
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.postgres.persistence.size }}
+{{ end }}
+{{ end }}

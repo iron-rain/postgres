@@ -1,0 +1,29 @@
+{{ if .Values.pgbackrest.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.postgres.name }}-pgbackrest-config
+data:
+  pgbackrest.conf: |      
+    [database]
+    db-path=/var/lib/postgresql/data/pgdata
+
+    [global]
+    {{ if eq .Values.pgbackrest.backup.type "volume" }}
+    repo-path=/backup/{{ .Values.pgbackrest.backup.VolumeConfig.path  }}    
+    {{ end }}
+    {{ if eq .Values.pgbackrest.backup.type "s3" }}    
+    repo1-s3-endpoint={{ .Values.pgbackrest.backup.s3Config.endpoint }}
+    repo1-s3-verify-tls=n    
+    repo1-path=/{{ .Values.pgbackrest.backup.s3Config.path }}
+    repo1-s3-bucket={{ .Values.pgbackrest.backup.s3Config.bucket }}    
+    repo1-s3-key={{ .Values.pgbackrest.backup.s3Config.accessKey }}
+    repo1-s3-key-secret={{ .Values.pgbackrest.backup.s3Config.secretKey }}    
+    repo1-s3-region=minio
+    repo1-s3-port={{ .Values.pgbackrest.backup.s3Config.port }}
+    repo1-s3-uri-style=path
+    repo1-type=s3
+    {{ end }}
+    retention-full={{ .Values.pgbackrest.backup.settings.retentionFull }}
+    retention-diff={{ .Values.pgbackrest.backup.settings.retentionDiff }}    
+{{ end }}
