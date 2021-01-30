@@ -1,0 +1,119 @@
+{{ if .Values.postgres.ha.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.postgres.name }}-headless
+  labels:
+    app: {{ .Values.postgres.name }}-app
+    cluster-name: {{ .Values.postgres.name }}-cluster
+spec:
+  clusterIP: None
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Values.postgres.name }}-app-cluster
+  labels:
+    app: {{ .Values.postgres.name }}-app
+    cluster-name: {{ .Values.postgres.name }}-cluster
+spec:
+  replicas: 3    
+  serviceName: {{ .Values.postgres.name }}-headless
+  selector:
+    matchLabels:
+      app: {{ .Values.postgres.name }}-app
+      cluster-name: {{ .Values.postgres.name }}-cluster            
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.postgres.name }}-app
+        cluster-name: {{ .Values.postgres.name }}-cluster      
+    spec:
+      serviceAccountName: {{ .Values.postgres.name }}-sa
+      securityContext:
+        fsGroup: 999 
+      containers:
+      - name: {{ .Values.postgres.name }}-cluster
+        securityContext:
+          runAsUser: 999
+        image: ironrainio/postgis:12-patroni
+        imagePullPolicy: Always
+        command:
+        - /entrypoint.d/entrypoint.sh      
+        ports:
+        - containerPort: 8008
+          name: tcp-8008
+          protocol: TCP
+        - containerPort: 5432
+          name: tcp-5432
+          protocol: TCP
+        volumeMounts:
+        - mountPath: /var/lib/postgresql/data
+          name: pgdata
+        - mountPath: /entrypoint.d
+          name: entrypoint
+        env:
+        - name: PATRONI_KUBERNETES_POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: PATRONI_KUBERNETES_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: PATRONI_KUBERNETES_BYPASS_API_SERVICE
+          value: 'false'
+        - name: PATRONI_KUBERNETES_USE_ENDPOINTS
+          value: 'true'
+        - name: PATRONI_KUBERNETES_LABELS
+          value: '{app: {{ .Values.postgres.name }}-app, cluster-name: {{ .Values.postgres.name }}-cluster}'
+        - name: PATRONI_SUPERUSER_USERNAME
+          value: postgres
+        - name: PATRONI_SUPERUSER_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.postgres.ha.secrets }}
+              key: SUPERUSER_PASSWORD
+        - name: PATRONI_REPLICATION_USERNAME
+          value: standby
+        - name: PATRONI_REPLICATION_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.postgres.ha.secrets }}
+              key: STANDBY_PASSWORD
+        - name: PATRONI_SCOPE
+          value: {{ .Values.postgres.name }}-cluster
+        - name: PATRONI_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: PATRONI_POSTGRESQL_DATA_DIR
+          value: /var/lib/postgresql/data/pgdata
+        - name: PATRONI_POSTGRESQL_PGPASS
+          value: /tmp/pgpass
+        - name: PATRONI_POSTGRESQL_LISTEN
+          value: '0.0.0.0:5432'
+        - name: PATRONI_RESTAPI_LISTEN
+          value: '0.0.0.0:8008'                
+      terminationGracePeriodSeconds: 0
+      volumes:
+      - name: entrypoint
+        configMap:
+          name: {{ .Values.postgres.name }}-patroni-config
+          items:
+          - key: entrypoint.sh
+            path: entrypoint.sh
+            mode: 0755
+  volumeClaimTemplates:
+  - metadata:
+      labels:
+        app: {{ .Values.postgres.name }}-app
+        cluster-name: {{ .Values.postgres.name }}-cluster      
+      name: pgdata
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 1Gi
+{{ end }}

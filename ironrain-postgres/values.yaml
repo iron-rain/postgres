@@ -8,12 +8,25 @@ secrets:
       name: postgres-secrets
       
 postgres:
+  
   name: postgres
-  postgis: 
+
+  standalone:
+    enabled: false
+
+  ha:
     enabled: true
+    rbac:
+      enabled: true
+    replicas: 3
+    secrets: postgres-secrets
+
+  postgis: 
+    enabled: false
     image: 
       repository: ironrainio/postgis
       tag: 12-3.1
+
   image:
     repository: ironrainio/postgres
     tag: 12    
@@ -27,9 +40,9 @@ postgres:
     storageClass: 'longhorn'
 
 pgbackrest:
-  enabled: true
+  enabled: false
   restore:
-    enabled: true
+    enabled: false
   backup:
     type: s3
     settings:

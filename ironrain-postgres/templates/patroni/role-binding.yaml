@@ -1,0 +1,15 @@
+{{ if .Values.postgres.ha.enabled }}
+{{ if .Values.postgres.ha.rbac.enabled }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ .Values.postgres.name }}-role-binding
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.postgres.name }}-sa
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ .Values.postgres.name }}-role
+{{ end }}  
+{{ end }}

@@ -1,0 +1,21 @@
+{{ if .Values.postgres.ha.enabled }}
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: {{ .Values.postgres.name }}-endpoint
+  labels:
+    app: {{ .Values.postgres.name }}
+subsets: []
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.postgres.name }}-service
+spec:
+  type: ClusterIP
+  ports:
+  - name: tcp-5432
+    port: 5432
+    targetPort: 5432
+    protocol: TCP  
+{{ end }}    

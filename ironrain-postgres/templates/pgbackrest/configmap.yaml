@@ -1,3 +1,4 @@
+{{ if .Values.postgres.standalone.enabled }}
 {{ if .Values.pgbackrest.enabled }}
 apiVersion: v1
 kind: ConfigMap
@@ -26,4 +27,5 @@ data:
     {{ end }}
     retention-full={{ .Values.pgbackrest.backup.settings.retentionFull }}
     retention-diff={{ .Values.pgbackrest.backup.settings.retentionDiff }}    
+{{ end }}
 {{ end }}
