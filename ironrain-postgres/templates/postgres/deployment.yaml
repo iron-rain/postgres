@@ -61,7 +61,11 @@ spec:
       {{ if .Values.pgbackrest.restore.enabled }}
       {{ if .Values.pgbackrest.enabled }}
       - name: {{ .Values.postgres.name }}-pgbackrest-restore
+        {{ if .Values.postgres.postgis.enabled }}
+        image: {{ .Values.postgres.postgis.image.repository }}:{{ .Values.postgres.postgis.image.tag }}      
+        {{ else}}
         image: {{ .Values.postgres.image.repository }}:{{ .Values.postgres.image.tag }}
+        {{ end }}        
         imagePullPolicy: Always
         securityContext:
           runAsUser: 999
@@ -86,7 +90,11 @@ spec:
       {{ end }}
       containers:
       - name: {{ .Values.postgres.name }}
+        {{ if .Values.postgres.postgis.enabled }}
+        image: {{ .Values.postgres.postgis.image.repository }}:{{ .Values.postgres.postgis.image.tag }}      
+        {{ else}}
         image: {{ .Values.postgres.image.repository }}:{{ .Values.postgres.image.tag }}
+        {{ end }}        
         imagePullPolicy: Always
         securityContext:
           runAsUser: 999
@@ -127,7 +135,11 @@ spec:
         {{ end }}
       {{ if .Values.pgbackrest.enabled }}
       - name: {{ .Values.postgres.name }}-pgbackrest-backup
+        {{ if .Values.postgres.postgis.enabled }}
+        image: {{ .Values.postgres.postgis.image.repository }}:{{ .Values.postgres.postgis.image.tag }}      
+        {{ else}}
         image: {{ .Values.postgres.image.repository }}:{{ .Values.postgres.image.tag }}
+        {{ end }}        
         imagePullPolicy: Always
         securityContext:
           runAsUser: 999
