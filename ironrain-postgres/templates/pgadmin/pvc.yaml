@@ -1,0 +1,27 @@
+{{ if .Values.pgadmin.enabled }}
+{{ if .Values.pgadmin.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.postgres.name }}-pgadmin-data
+spec:
+  storageClassName: {{ .Values.postgres.persistence.storageClass }}
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.pgadmin.persistence.size }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.postgres.name }}-pgadmin-logs
+spec:
+  storageClassName: {{ .Values.postgres.persistence.storageClass }}
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.pgadmin.persistence.size }}      
+{{ end }}
+{{ end }}

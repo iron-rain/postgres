@@ -1,0 +1,48 @@
+{{ if .Values.pgadmin.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.postgres.name }}-pgadmin
+  labels:
+    deployment: {{ .Values.postgres.name }}-pgadmin-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+        app: {{ .Values.postgres.name }}-pgadmin-app
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.postgres.name }}-pgadmin-app
+    spec:
+      securityContext:
+        fsGroup: 5050        
+      volumes:
+      - name: {{ .Values.postgres.name }}-pgadmin-data
+        persistentVolumeClaim:
+          claimName: {{ .Values.postgres.name }}-pgadmin-data
+      - name: {{ .Values.postgres.name }}-pgadmin-logs
+        persistentVolumeClaim:
+          claimName: {{ .Values.postgres.name }}-pgadmin-logs
+      containers:
+      - name: {{ .Values.postgres.name }}-pgadmin
+        image: {{ .Values.pgadmin.image.repository }}:{{ .Values.pgadmin.image.tag }}
+        securityContext:
+          runAsUser: 5050
+        ports:
+        - containerPort: 80
+          name: tcp-80
+        env:
+        - name: PGADMIN_DEFAULT_EMAIL
+          value: {{ .Values.pgadmin.user.email }}
+        - name: PGADMIN_DEFAULT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.postgres.user.passwordSecret }}
+              key: PGADMIN_PASSWORD
+        volumeMounts:
+        - mountPath: /var/lib/pgadmin
+          name: {{ .Values.postgres.name }}-pgadmin-data
+        - mountPath: /var/log/pgadmin
+          name: {{ .Values.postgres.name }}-pgadmin-logs
+{{ end }}

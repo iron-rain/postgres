@@ -1,0 +1,15 @@
+{{ if .Values.pgadmin.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.postgres.name }}-pgadmin-svc
+  labels:
+    run: {{ .Values.postgres.name }}-pgadmin-svc
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+    name: tcp-80
+  selector:
+    app: {{ .Values.postgres.name }}-pgadmin-app
+{{ end }}

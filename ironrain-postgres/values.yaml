@@ -40,4 +40,15 @@ pgbackrest:
       endpoint: 192.168.0.179
       port: 9000
       region: minio
-      
+
+pgadmin:
+  enabled: true
+  image:
+    repository: dpage/pgadmin4
+    tag: 4.29
+  user:
+    email: admin@localhost.com
+    passwordSecret: postgres-secrets
+  persistence:
+    enabled: true
+    size: 1Gi
