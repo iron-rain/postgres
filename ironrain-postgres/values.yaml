@@ -1,72 +1,113 @@
 # Iron Rain Postgres
 
-## Demo Secrets ##
-secrets:
-  demo:
-    postgres:
-      enabled: true
-      name: postgres-secrets
-      
-postgres:
-  
+# Global Variables, these are common across all deployments.
+global:
   name: postgres
+  # standalone, cluster or standby
+  deploymentMode: cluster
+  # restore from a backup, volumes must be pre-populated if using volumes,
+  # requires pgbackrest to be enabled
+  restore: false
 
-  standalone:
-    enabled: false
+# Demo secrets, don't use these in production.
+demo:
+  enabled: true
 
-  ha:
+postgres:
+
+  # postgres and postgis
+  type: postgres
+  replicas: 3
+
+  defaultAdmin:
+    username: postgres
+    # Use POSTGRES_PASSWORD as key 
+    passwordSecret: postgres-demo-secrets
+  
+  replicationAdmin:
+    username: standby
+    # Use STANDBY_PASSWORD as key 
+    passwordSecret: postgres-demo-secrets    
+
+  rbac:
     enabled: true
-    rbac:
-      enabled: true
-    replicas: 3
-    secrets: postgres-secrets
-
-  postgis: 
-    enabled: false
-    image: 
-      repository: ironrainio/postgis
-      tag: 12-3.1
 
   image:
     repository: ironrainio/postgres
-    tag: 12    
-  user:
-    name: postgres
-    # KeyName is POSTGRES_PASSWORD
-    passwordSecret: postgres-secrets
+    tag: 13-patroni
+
+  postgis:
+    image:
+      repository: ironrainio/postgis
+      tag: 13-3.1
+
+  imagePullPolicy: Always 
+
+  securityContext:
+    runAsUser: 999
+    fsGroup: 999      
+
   persistence:
     enabled: true
-    size: 1Gi
-    storageClass: 'longhorn'
+    storageClass: 
+    dbSize: 1Gi
+    # Only used if pgbackrest is enabled and set to volume
+    backupSize: 1Gi
 
-pgbackrest:
-  enabled: false
-  restore:
-    enabled: false
-  backup:
-    type: s3
-    settings:
-      retentionFull: 2
-      retentionDiff: 24
-    volumeConfig:
-      path: ''
-    s3Config:
-      bucket: postgres-backup
-      accessKey: minioadmin
-      secretKey: minioadmin
-      path: ''
-      endpoint: 192.168.0.179
-      port: 9000
-      region: minio
 
 pgadmin:
   enabled: true
+
   image:
     repository: dpage/pgadmin4
     tag: 4.29
-  user:
+  
+  securityContext:
+    runAsUser: 5050
+    fsGroup: 5050
+
+  defaultAdmin:
     email: admin@localhost
-    passwordSecret: postgres-secrets
+    # Name of secret with Key PGADMIN_PASSWORD
+    passwordSecret: postgres-demo-secrets
+
+  ingress:
+    enabled: true
+    externalHost: pgadmin.local
+    
+    tls:
+      enabled: false
+      certManager: false
+      secretName: pgadmin-tls
+
   persistence:
     enabled: true
-    size: 1Gi
+    storageClass:
+    dataSize: 1Gi
+    logSize: 1Gi    
+
+# pgbackrest backups, local volume and S3 are enabled.
+pgbackrest:
+  enabled: true
+
+  # common backup settings
+  common:
+    retentionFull: 2
+    #retentionDiff: 6
+  # s3 or volume
+  backupType: s3
+
+  s3:
+    endpoint: 192.168.0.179
+    port: 9000
+    bucket: postgres-backups
+    # S3 keys
+    accessKey: minioadmin
+    secretKey: minioadmin
+    # Path in bucket
+    path: 'cluster'
+    # path or uri, path is for minio.local/<BUCKET>, uri is for <BUCKET>.minio.local
+    uriStyle: path
+
+  volume:
+    path: pg_backups

@@ -1,0 +1,28 @@
+{{ if .Values.pgadmin.enabled }}
+{{ if .Values.pgadmin.ingress.enabled }}
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: {{ .Values.global.name }}-pgadmin-ingress
+  annotations:
+    {{ if .Values.pgadmin.ingress.tls.enabled }}
+    {{ if .Values.pgadmin.ingress.tls.certManager }}
+    kubernetes.io/tls-acme: "true"
+    {{ end }}
+    {{ end }}
+spec:
+  {{ if .Values.pgadmin.ingress.tls.enabled }}
+  tls:
+  - hosts:
+    - {{ .Values.pgadmin.ingress.externalHost }}
+    secretName: {{ .Values.pgadmin.ingress.tls.secretName }}
+  {{ end }}
+  rules:
+  - host: {{ .Values.pgadmin.ingress.externalHost }}
+    http:
+      paths:      
+      - backend:
+            serviceName: {{ .Values.global.name }}-pgadmin-svc
+            servicePort: 80              
+{{ end }}
+{{ end }}

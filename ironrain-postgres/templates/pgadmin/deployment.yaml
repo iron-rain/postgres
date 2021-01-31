@@ -2,47 +2,47 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Values.postgres.name }}-pgadmin
+  name: {{ .Values.global.name }}-pgadmin
   labels:
-    deployment: {{ .Values.postgres.name }}-pgadmin-deployment
+    deployment: {{ .Values.global.name }}-pgadmin-deployment
 spec:
   replicas: 1
   selector:
     matchLabels:
-        app: {{ .Values.postgres.name }}-pgadmin-app
+        app: {{ .Values.global.name }}-pgadmin-app
   template:
     metadata:
       labels:
-        app: {{ .Values.postgres.name }}-pgadmin-app
+        app: {{ .Values.global.name }}-pgadmin-app
     spec:
       securityContext:
-        fsGroup: 5050        
+        fsGroup: {{ .Values.pgadmin.securityContext.fsGroup }}        
       volumes:
-      - name: {{ .Values.postgres.name }}-pgadmin-data
+      - name: {{ .Values.global.name }}-pgadmin-data
         persistentVolumeClaim:
-          claimName: {{ .Values.postgres.name }}-pgadmin-data
-      - name: {{ .Values.postgres.name }}-pgadmin-logs
+          claimName: {{ .Values.global.name }}-pgadmin-data
+      - name: {{ .Values.global.name }}-pgadmin-logs
         persistentVolumeClaim:
-          claimName: {{ .Values.postgres.name }}-pgadmin-logs
+          claimName: {{ .Values.global.name }}-pgadmin-logs
       containers:
-      - name: {{ .Values.postgres.name }}-pgadmin
+      - name: {{ .Values.global.name }}-pgadmin
         image: {{ .Values.pgadmin.image.repository }}:{{ .Values.pgadmin.image.tag }}
         securityContext:
-          runAsUser: 5050
+          runAsUser: {{ .Values.pgadmin.securityContext.runAsUser }}
         ports:
         - containerPort: 80
           name: tcp-80
         env:
         - name: PGADMIN_DEFAULT_EMAIL
-          value: {{ .Values.pgadmin.user.email }}
+          value: {{ .Values.pgadmin.defaultAdmin.email }}
         - name: PGADMIN_DEFAULT_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: {{ .Values.postgres.user.passwordSecret }}
+              name: {{ .Values.postgres.defaultAdmin.passwordSecret }}
               key: PGADMIN_PASSWORD
         volumeMounts:
         - mountPath: /var/lib/pgadmin
-          name: {{ .Values.postgres.name }}-pgadmin-data
+          name: {{ .Values.global.name }}-pgadmin-data
         - mountPath: /var/log/pgadmin
-          name: {{ .Values.postgres.name }}-pgadmin-logs
+          name: {{ .Values.global.name }}-pgadmin-logs
 {{ end }}

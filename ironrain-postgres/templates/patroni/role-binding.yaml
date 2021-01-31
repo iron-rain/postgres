@@ -1,15 +1,15 @@
-{{ if .Values.postgres.ha.enabled }}
-{{ if .Values.postgres.ha.rbac.enabled }}
+{{ if or (eq .Values.global.deploymentMode "cluster") (eq .Values.global.deploymentMode "standby") }}
+{{ if .Values.postgres.rbac.enabled }}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: {{ .Values.postgres.name }}-role-binding
+  name: {{ .Values.global.name }}-{{ .Release.Namespace }}-role-binding
 subjects:
   - kind: ServiceAccount
-    name: {{ .Values.postgres.name }}-sa
+    name: {{ .Values.global.name }}-{{ .Release.Namespace }}-sa
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: {{ .Values.postgres.name }}-role
+  name: {{ .Values.global.name }}-{{ .Release.Namespace }}-role
 {{ end }}  
 {{ end }}

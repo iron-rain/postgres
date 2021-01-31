@@ -1,31 +1,45 @@
-{{ if .Values.postgres.standalone.enabled }}
 {{ if .Values.pgbackrest.enabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ .Values.postgres.name }}-pgbackrest-config
+  name: {{ .Values.global.name }}-pgbackrest-config
 data:
   pgbackrest.conf: |      
     [database]
     db-path=/var/lib/postgresql/data/pgdata
 
     [global]
-    {{ if eq .Values.pgbackrest.backup.type "volume" }}
-    repo-path=/backup/{{ .Values.pgbackrest.backup.VolumeConfig.path  }}    
+    {{ if eq .Values.pgbackrest.backupType "volume" }}
+    repo-path=/backup/{{ .Values.pgbackrest.volume.path  }}    
     {{ end }}
-    {{ if eq .Values.pgbackrest.backup.type "s3" }}    
-    repo1-s3-endpoint={{ .Values.pgbackrest.backup.s3Config.endpoint }}
-    repo1-s3-verify-tls=n    
-    repo1-path=/{{ .Values.pgbackrest.backup.s3Config.path }}
-    repo1-s3-bucket={{ .Values.pgbackrest.backup.s3Config.bucket }}    
-    repo1-s3-key={{ .Values.pgbackrest.backup.s3Config.accessKey }}
-    repo1-s3-key-secret={{ .Values.pgbackrest.backup.s3Config.secretKey }}    
+
+    {{ if eq .Values.pgbackrest.backupType "s3" }}    
+    repo1-s3-endpoint={{ .Values.pgbackrest.s3.endpoint }}
+    repo1-s3-verify-tls=n
+    repo1-path=/{{ .Values.pgbackrest.s3.path }}
+    repo1-s3-bucket={{ .Values.pgbackrest.s3.bucket }}    
+    repo1-s3-key={{ .Values.pgbackrest.s3.accessKey }}
+    repo1-s3-key-secret={{ .Values.pgbackrest.s3.secretKey }}    
     repo1-s3-region=minio
-    repo1-s3-port={{ .Values.pgbackrest.backup.s3Config.port }}
-    repo1-s3-uri-style=path
+    repo1-s3-port={{ .Values.pgbackrest.s3.port }}
+    repo1-s3-uri-style={{ .Values.pgbackrest.s3.uriStyle }}
     repo1-type=s3
     {{ end }}
-    retention-full={{ .Values.pgbackrest.backup.settings.retentionFull }}
-    retention-diff={{ .Values.pgbackrest.backup.settings.retentionDiff }}    
-{{ end }}
+
+    retention-full={{ .Values.pgbackrest.common.retentionFull }}    
+  backup-schedule.py: |    
+    #!/usr/bin/python
+    import schedule
+    import time
+    import os
+
+    os.system('echo "Backup operator started."')
+
+    def job():
+      os.system('pgbackrest --stanza=database --log-level-console=info backup')
+    schedule.every(1).hours.do(job)
+
+    while True:
+      schedule.run_pending()
+      time.sleep(1)    
 {{ end }}

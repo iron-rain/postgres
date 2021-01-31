@@ -3,25 +3,29 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ .Values.postgres.name }}-pgadmin-data
+  name: {{ .Values.global.name }}-pgadmin-data
 spec:
+  {{ if .Values.pgadmin.persistence.storageClass }}
   storageClassName: {{ .Values.postgres.persistence.storageClass }}
+  {{ end }}
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
-      storage: {{ .Values.pgadmin.persistence.size }}
+      storage: {{ .Values.pgadmin.persistence.dataSize }}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ .Values.postgres.name }}-pgadmin-logs
+  name: {{ .Values.global.name }}-pgadmin-logs
 spec:
+  {{ if .Values.postgres.persistence.storageClass }}
   storageClassName: {{ .Values.postgres.persistence.storageClass }}
+  {{ end }}
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
-      storage: {{ .Values.pgadmin.persistence.size }}      
+      storage: {{ .Values.pgadmin.persistence.logSize }}      
 {{ end }}
 {{ end }}

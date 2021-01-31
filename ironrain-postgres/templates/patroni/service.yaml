@@ -1,16 +1,16 @@
-{{ if .Values.postgres.ha.enabled }}
+{{ if or (eq .Values.global.deploymentMode "cluster") (eq .Values.global.deploymentMode "standby") }}
 apiVersion: v1
 kind: Endpoints
 metadata:
-  name: {{ .Values.postgres.name }}-endpoint
+  name: {{ .Values.global.name }}-endpoint
   labels:
-    app: {{ .Values.postgres.name }}
+    app: {{ .Values.global.name }}-database
 subsets: []
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ .Values.postgres.name }}-service
+  name: {{ .Values.global.name }}-svc
 spec:
   type: ClusterIP
   ports:
@@ -18,4 +18,19 @@ spec:
     port: 5432
     targetPort: 5432
     protocol: TCP  
-{{ end }}    
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.global.name }}-leader
+spec:
+  type: ClusterIP
+  selector:
+    role: master
+    app: {{ .Values.global.name }}-database
+  ports:
+  - name: tcp-5432
+    port: 5432
+    targetPort: 5432
+    protocol: TCP
+{{ end }}

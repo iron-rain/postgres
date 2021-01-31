@@ -1,31 +1,35 @@
-{{ if .Values.postgres.standalone.enabled }}
+{{ if eq .Values.global.deploymentMode "standalone" }}
 {{ if .Values.postgres.persistence.enabled }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ .Values.postgres.name }}-db-data
+  name: {{ .Values.global.name }}-db-data
 spec:
+  {{ if .Values.postgres.persistence.storageClass }}
   storageClassName: {{ .Values.postgres.persistence.storageClass }}
+  {{ end }}
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
-      storage: {{ .Values.postgres.persistence.size }}
+      storage: {{ .Values.postgres.persistence.dbSize }}
 {{ end }}
 ---
 {{ if .Values.pgbackrest.enabled }}
-{{ if eq .Values.pgbackrest.backup.type "volume" }}
+{{ if eq .Values.pgbackrest.backupType "volume" }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ .Values.postgres.name }}-db-backup
+  name: {{ .Values.global.name }}-db-backup
 spec:
+  {{ if .Values.postgres.persistence.storageClass }}
   storageClassName: {{ .Values.postgres.persistence.storageClass }}
+  {{ end }}
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
-      storage: {{ .Values.postgres.persistence.size }}
+      storage: {{ .Values.postgres.persistence.backupSize }}
 {{ end }}
 {{ end }}
 {{ end }}

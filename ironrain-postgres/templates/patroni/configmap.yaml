@@ -1,8 +1,8 @@
-{{ if .Values.secrets.demo.postgres.enabled }}
+{{ if or (eq .Values.global.deploymentMode "cluster") (eq .Values.global.deploymentMode "standby") }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ .Values.postgres.name }}-patroni-config
+  name: {{ .Values.global.name }}-patroni-config
 data:
   entrypoint.sh: |
     #!/bin/bash
@@ -18,9 +18,13 @@ data:
     bootstrap:
       method: pgbackrest
       pgbackrest:
-        # Change to bootstrap_cluster.sh for new cluster
+        {{ if eq .Values.global.deploymentMode "standby" }}
+        command: /entrypoint.d/bootstrap_replica.sh
+        {{ else if .Values.global.restore }}
+        command: /entrypoint.d/bootstrap_replica.sh
+        {{ else }}
         command: /entrypoint.d/bootstrap_cluster.sh
-        # Change to False for new cluster
+        {{ end }}
         keep_existing_recovery_conf: True        
       post_bootstrap: /entrypoint.d/post_bootstrap.sh      
 
@@ -33,20 +37,28 @@ data:
             keep_data: True
             no_params: True
           use_pg_rewind: true        
+          use_slots: true
           parameters:
-            wal_level: replica
+            wal_level: replica            
+            max_replication_slots: 5            
             archive_mode: 'on'
             archive_command: pgbackrest --stanza=database  archive-push %p 
             archive_timeout: 60
-        recovery_conf:
-          restore_command: pgbackrest --stanza=database archive-get %f %p 
-          standby_mode: 'on'                
+          recovery_conf:
+            restore_command: pgbackrest --stanza=database archive-get %f %p 
+            standby_mode: 'on'
       pg_hba:
       - host all all 0.0.0.0/0 md5
+      - local all all trust
       - host replication ${PATRONI_REPLICATION_USERNAME} ${PATRONI_KUBERNETES_POD_IP}/16 md5
     restapi:
       connect_address: '${PATRONI_KUBERNETES_POD_IP}:8008'
     postgresql:
+      pg_hba:
+      - host all all 0.0.0.0/0 md5
+      - local all all trust
+      - host replication ${PATRONI_REPLICATION_USERNAME} ${PATRONI_KUBERNETES_POD_IP}/16 md5
+      - host replication ${PATRONI_REPLICATION_USERNAME} 127.0.0.1/32 md5
       connect_address: '${PATRONI_KUBERNETES_POD_IP}:5432' 
       use_unix_socket: true
       unix_socket_directories: /var/run/postgresql/
@@ -58,16 +70,19 @@ data:
     __EOF__
 
     unset PATRONI_SUPERUSER_PASSWORD PATRONI_REPLICATION_PASSWORD
+    
+    chmod 0700 /var/lib/postgresql/data/pgdata    
 
-    chmod 0700 /var/lib/postgresql/data/pgdata
-
-    exec /usr/bin/python /usr/local/bin/patroni /home/postgres/patroni.yml    
+    exec /usr/bin/python /usr/local/bin/patroni /home/postgres/patroni.yml
   bootstrap_cluster.sh: |
     #!/bin/bash
+    echo 'Bootstrapping cluster'
     if [ ! -d /var/lib/postgresql/data/pgdata ]; then
       initdb -D /var/lib/postgresql/data/pgdata
     fi
-    chmod 0750 -R /var/lib/postgresql/data/pgdata    
+    if [ ! -d /var/lib/postgresql/data/pgdata ]; then
+      chmod 0750 -R /var/lib/postgresql/data/pgdata    
+    fi
   post_bootstrap.sh: |
     #!/bin/bash
     pgbackrest --stanza=database --log-level-console=info stanza-create
@@ -79,5 +94,4 @@ data:
     fi
     chmod 0750 -R /var/lib/postgresql/data/pgdata        
     pgbackrest --log-level-console=info --stanza=database --delta restore
-    
 {{ end }}

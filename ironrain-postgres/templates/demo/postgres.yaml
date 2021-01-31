@@ -1,10 +1,10 @@
-{{ if .Values.secrets.demo.postgres.enabled }}
+{{ if .Values.demo.enabled }}
 apiVersion: v1
 kind: Secret
 metadata:
-  name: {{ .Values.secrets.demo.postgres.name }}
+  name: postgres-demo-secrets
   labels:
-    note: demo-secret
+    note: demo-secrets
 data:
   POSTGRES_PASSWORD: {{ "postgres" | b64enc }}
   PGADMIN_PASSWORD: {{ "postgres" | b64enc }}

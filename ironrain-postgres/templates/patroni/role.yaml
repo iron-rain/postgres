@@ -1,9 +1,9 @@
-{{ if .Values.postgres.ha.enabled }}
-{{ if .Values.postgres.ha.rbac.enabled }}
+{{ if or (eq .Values.global.deploymentMode "cluster") (eq .Values.global.deploymentMode "standby") }}
+{{ if .Values.postgres.rbac.enabled }}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: {{ .Values.postgres.name }}-role
+  name: {{ .Values.global.name }}-{{ .Release.Namespace }}-role
 rules:
 - apiGroups: [""]
   resources: ["configmaps"]

@@ -1,0 +1,60 @@
+{{ if eq .Values.global.deploymentMode "standalone" }}
+{{ if .Values.pgbackrest.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.global.name }}-pgbackrest-entrypoint
+data:  
+  entrypoint.sh: |
+    if [ ! -d /var/lib/postgresql/data/pgdata ]; then
+      initdb -D /var/lib/postgresql/data/pgdata
+    fi
+    chmod 0750 -R /var/lib/postgresql/data/pgdata
+    postgres -c config-file=/entrypoint.d/postgresql.conf
+  restore.sh: |
+    if [ ! -d /var/lib/postgresql/data/pgdata ]; then
+      mkdir -p /var/lib/postgresql/data/pgdata
+      pgbackrest --stanza=database --log-level-console=info restore
+    else
+      echo '/var/lib/postgresql/data/pgdata exists, skipping restore...'
+    fi
+  backup.sh: |    
+    python /entrypoint.d/backup-schedule.py
+  backup-schedule.py: |    
+    #!/usr/bin/python
+    import schedule
+    import time
+    import os
+
+    os.system('pgbackrest --stanza=database --log-level-console=info stanza-create')
+
+    def job():
+      os.system('pgbackrest --stanza=database --log-level-console=info backup')
+    schedule.every(1).hours.do(job)
+
+    while True:
+      schedule.run_pending()
+      time.sleep(1)
+  postgresql.conf: |
+    listen_addresses = '*'
+    port = 5432           
+    max_connections = 1000
+    shared_buffers = 128MB                        
+    dynamic_shared_memory_type = posix       
+    wal_level = replica                                                               
+    max_wal_size = 1GB
+    min_wal_size = 80MB
+    archive_mode = on             
+    archive_command = 'pgbackrest --stanza=database archive-push %p'     
+    max_wal_senders = 3        
+    log_line_prefix = ''                               
+    log_timezone = 'Etc/UTC'
+    datestyle = 'iso, mdy'    
+    timezone = 'Etc/UTC'
+    lc_messages = 'en_US.utf8'             
+    lc_monetary = 'en_US.utf8'            
+    lc_numeric = 'en_US.utf8'             
+    lc_time = 'en_US.utf8'          
+    default_text_search_config = 'pg_catalog.english'                       
+{{ end }}    
+{{ end }}
