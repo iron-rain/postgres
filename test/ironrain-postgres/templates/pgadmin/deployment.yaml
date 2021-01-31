@@ -1,0 +1,48 @@
+---
+# Source: ironrain-postgres/templates/pgadmin/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-pgadmin
+  labels:
+    deployment: postgres-pgadmin-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+        app: postgres-pgadmin-app
+  template:
+    metadata:
+      labels:
+        app: postgres-pgadmin-app
+    spec:
+      securityContext:
+        fsGroup: 5050        
+      volumes:
+      - name: postgres-pgadmin-data
+        persistentVolumeClaim:
+          claimName: postgres-pgadmin-data
+      - name: postgres-pgadmin-logs
+        persistentVolumeClaim:
+          claimName: postgres-pgadmin-logs
+      containers:
+      - name: postgres-pgadmin
+        image: dpage/pgadmin4:4.29
+        securityContext:
+          runAsUser: 5050
+        ports:
+        - containerPort: 80
+          name: tcp-80
+        env:
+        - name: PGADMIN_DEFAULT_EMAIL
+          value: admin@localhost
+        - name: PGADMIN_DEFAULT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secrets
+              key: PGADMIN_PASSWORD
+        volumeMounts:
+        - mountPath: /var/lib/pgadmin
+          name: postgres-pgadmin-data
+        - mountPath: /var/log/pgadmin
+          name: postgres-pgadmin-logs

@@ -1,0 +1,39 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: restore-test
+spec:
+  template:
+    spec:
+      containers:
+      - name: test-job
+        volumeMounts:
+        - name: pgdata        
+          mountPath: /var/lib/postgresql/data          
+        - name: pgbackrest-config
+          mountPath: "/etc/pgbackrest"      
+        - name: restore-entrypoint
+          mountPath: /entrypoint.d
+        image: ironrainio/postgres:12
+        command:
+        - sh 
+        - /entrypoint.d/entrypoint.sh
+      restartPolicy: Never
+      volumes:            
+      - name: pgbackrest-config
+        configMap:
+          name: postgres-pgbackrest-config
+          items:
+          - key: pgbackrest.conf
+            path: pgbackrest.conf
+      - name: restore-entrypoint
+        configMap:
+          name: restore-entrypoint
+          items:
+          - key: entrypoint.sh
+            path: entrypoint.sh
+            mode: 0755
+      - name: pgdata
+        persistentVolumeClaim:
+          claimName: pgdata-postgres-app-cluster-0
+  backoffLimit: 4

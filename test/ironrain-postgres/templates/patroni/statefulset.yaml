@@ -1,0 +1,161 @@
+---
+# Source: ironrain-postgres/templates/patroni/statefulset.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-headless
+  labels:
+    app: postgres-app
+    cluster-name: postgres-cluster
+spec:
+  clusterIP: None
+---
+# Source: ironrain-postgres/templates/patroni/statefulset.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-app-cluster
+  labels:
+    app: postgres-app
+    cluster-name: postgres-cluster
+spec:
+  replicas: 3    
+  serviceName: postgres-headless
+  selector:
+    matchLabels:
+      app: postgres-app
+      cluster-name: postgres-cluster            
+  template:
+    metadata:
+      labels:
+        app: postgres-app
+        cluster-name: postgres-cluster      
+    spec:
+      serviceAccountName: postgres-sa
+      securityContext:
+        fsGroup: 999 
+      containers:
+      - name: postgres-cluster
+        securityContext:
+          runAsUser: 999
+        image: ironrainio/postgis:12-patroni
+        imagePullPolicy: Always
+        command:
+        - /entrypoint.d/entrypoint.sh      
+        ports:
+        - containerPort: 8008
+          name: tcp-8008
+          protocol: TCP
+        - containerPort: 5432
+          name: tcp-5432
+          protocol: TCP
+        volumeMounts:
+        - mountPath: /var/lib/postgresql/data
+          name: pgdata
+        - mountPath: /entrypoint.d
+          name: entrypoint
+        - mountPath: /var/run/postgresql/
+          name: postgres-socket          
+        - name: pgbackrest-config
+          mountPath: "/etc/pgbackrest"
+          readOnly: true                 
+        env:
+        - name: PATRONI_KUBERNETES_POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: PATRONI_KUBERNETES_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: PATRONI_KUBERNETES_BYPASS_API_SERVICE
+          value: 'false'
+        - name: PATRONI_KUBERNETES_USE_ENDPOINTS
+          value: 'true'
+        - name: PATRONI_KUBERNETES_LABELS
+          value: '{app: postgres-app, cluster-name: postgres-cluster}'
+        - name: PATRONI_SUPERUSER_USERNAME
+          value: postgres
+        - name: PATRONI_SUPERUSER_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secrets
+              key: SUPERUSER_PASSWORD
+        - name: PATRONI_REPLICATION_USERNAME
+          value: standby
+        - name: PATRONI_REPLICATION_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secrets
+              key: STANDBY_PASSWORD
+        - name: PATRONI_SCOPE
+          value: postgres-cluster
+        - name: PATRONI_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: PATRONI_POSTGRESQL_DATA_DIR
+          value: /var/lib/postgresql/data/pgdata
+        - name: PATRONI_POSTGRESQL_PGPASS
+          value: /tmp/pgpass
+        - name: PATRONI_POSTGRESQL_LISTEN
+          value: '0.0.0.0:5432'
+        - name: PATRONI_RESTAPI_LISTEN
+          value: '0.0.0.0:8008'
+
+      - name: postgres-pgbackrest-backup
+        
+        image: ironrainio/postgres:12
+                
+        imagePullPolicy: Always
+        securityContext:
+          runAsUser: 999
+        volumeMounts:
+        - mountPath: /var/lib/postgresql/data
+          name: pgdata
+        - mountPath: /var/run/postgresql/
+          name: postgres-socket        
+        - name: pgbackrest-config
+          mountPath: "/etc/pgbackrest"
+          readOnly: true 
+        - name: schedule-config
+          mountPath: "/entrypoint.d"          
+        command:
+          - python
+          - /entrypoint.d/backup-schedule.py
+      terminationGracePeriodSeconds: 0
+      volumes:
+      - name: postgres-socket
+        emptyDir: {}      
+      - name: entrypoint
+        configMap:
+          name: postgres-patroni-config
+          items:
+          - key: entrypoint.sh
+            path: entrypoint.sh
+            mode: 0755        
+      - name: schedule-config
+        configMap:
+          name: postgres-pgbackrest-entrypoint
+          items:
+          - key: backup-schedule.py
+            path: backup-schedule.py
+            mode: 0755
+      - name: pgbackrest-config
+        configMap:
+          name: postgres-pgbackrest-config
+          items:
+          - key: pgbackrest.conf
+            path: pgbackrest.conf                    
+  volumeClaimTemplates:
+  - metadata:
+      labels:
+        app: postgres-app
+        cluster-name: postgres-cluster      
+      name: pgdata
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 1Gi

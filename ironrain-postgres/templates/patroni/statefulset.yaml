@@ -32,12 +32,31 @@ spec:
       serviceAccountName: {{ .Values.postgres.name }}-sa
       securityContext:
         fsGroup: 999 
+      #initContainers:      
+      #- name: {{ .Values.postgres.name }}-pgbackrest-restore
+        #{{ if .Values.postgres.postgis.enabled }}
+        #image: {{ .Values.postgres.postgis.image.repository }}:{{ .Values.postgres.postgis.image.tag }}      
+        #{{ else}}
+        #image: {{ .Values.postgres.image.repository }}:{{ .Values.postgres.image.tag }}
+        #{{ end }}        
+        #imagePullPolicy: Always
+        #securityContext:
+          #runAsUser: 999
+        #volumeMounts:
+        #- mountPath: /var/lib/postgresql/data
+          #name: pgdata
+        #- name: pgbackrest-config
+          #mountPath: "/etc/pgbackrest"
+          #readOnly: true
+        #command:
+          #- sh
+          #- /etc/pgbackrest/restore-point.sh 
       containers:
       - name: {{ .Values.postgres.name }}-cluster
         securityContext:
           runAsUser: 999
         image: ironrainio/postgis:12-patroni
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         command:
         - /entrypoint.d/entrypoint.sh      
         ports:
@@ -52,6 +71,11 @@ spec:
           name: pgdata
         - mountPath: /entrypoint.d
           name: entrypoint
+        - mountPath: /var/run/postgresql/
+          name: postgres-socket          
+        - name: pgbackrest-config
+          mountPath: "/etc/pgbackrest"
+          readOnly: true
         env:
         - name: PATRONI_KUBERNETES_POD_IP
           valueFrom:
@@ -76,6 +100,8 @@ spec:
               key: SUPERUSER_PASSWORD
         - name: PATRONI_REPLICATION_USERNAME
           value: standby
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
         - name: PATRONI_REPLICATION_PASSWORD
           valueFrom:
             secretKeyRef:
@@ -94,16 +120,70 @@ spec:
         - name: PATRONI_POSTGRESQL_LISTEN
           value: '0.0.0.0:5432'
         - name: PATRONI_RESTAPI_LISTEN
-          value: '0.0.0.0:8008'                
+          value: '0.0.0.0:8008'
+
+      #- name: {{ .Values.postgres.name }}-pgbackrest-backup
+        #{{ if .Values.postgres.postgis.enabled }}
+        #image: {{ .Values.postgres.postgis.image.repository }}:{{ .Values.postgres.postgis.image.tag }}      
+        #{{ else}}
+        #image: {{ .Values.postgres.image.repository }}:{{ .Values.postgres.image.tag }}
+        #{{ end }}        
+        #imagePullPolicy: IfNotPresent
+        #securityContext:
+          #runAsUser: 999
+        #volumeMounts:
+        #- mountPath: /var/lib/postgresql/data
+          #name: pgdata: removing initialize key after failed attempt to bootstrap the cluster
+        #- mountPath: /var/run/postgresql/
+          #name: postgres-socket        
+        #- name: pgbackrest-config
+          #mountPath: "/etc/pgbackrest"
+          #readOnly: true 
+        #- name: schedule-config
+          #mountPath: "/entrypoint.d"          
+        #command:
+          #- python
+          #- /entrypoint.d/backup-schedule.py
       terminationGracePeriodSeconds: 0
       volumes:
+      - name: postgres-socket
+        emptyDir: {}      
       - name: entrypoint
         configMap:
           name: {{ .Values.postgres.name }}-patroni-config
           items:
           - key: entrypoint.sh
             path: entrypoint.sh
+            mode: 0755        
+          - key: bootstrap_cluster.sh
+            path: bootstrap_cluster.sh
+            mode: 0755       
+          - key: post_bootstrap.sh
+            path: post_bootstrap.sh
+            mode: 0755       
+          - key: bootstrap_replica.sh
+            path: bootstrap_replica.sh
+            mode: 0755                                             
+      - name: schedule-config
+        configMap:
+          name: {{ .Values.postgres.name }}-pgbackrest-entrypoint
+          items:
+          - key: backup-schedule.py
+            path: backup-schedule.py
             mode: 0755
+      - name: pgbackrest-config
+        configMap:
+          name: {{ .Values.postgres.name }}-pgbackrest-config
+          items:
+          - key: pgbackrest.conf
+            path: pgbackrest.conf                    
+          - key: bootstrap.sh
+            path: bootstrap.sh
+            mode: 0755
+          - key: restore-point.sh
+            path: restore-point.sh
+            mode: 0755         
+               
   volumeClaimTemplates:
   - metadata:
       labels:

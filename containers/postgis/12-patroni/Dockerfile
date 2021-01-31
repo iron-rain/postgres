@@ -14,4 +14,7 @@ RUN chown postgres /etc/pgbackrest.conf && \
     ln -s /usr/bin/pip3 /usr/bin/pip
 
 RUN mkdir /home/postgres && \
-    chown postgres /home/postgres        
+    chown postgres /home/postgres && \
+    chown postgres /var/lib/pgbackrest && \
+    mkdir /archive/ && \
+    chown postgres /archive      

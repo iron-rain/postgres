@@ -16,30 +16,68 @@ data:
 
     cat > /home/postgres/patroni.yml <<__EOF__
     bootstrap:
+      method: pgbackrest
+      pgbackrest:
+        # Change to bootstrap_cluster.sh for new cluster
+        command: /entrypoint.d/bootstrap_cluster.sh
+        # Change to False for new cluster
+        keep_existing_recovery_conf: True        
+      post_bootstrap: /entrypoint.d/post_bootstrap.sh      
+
       dcs:
         postgresql:
-          use_pg_rewind: true
-      initdb:
-      - auth-host: md5
-      - auth-local: trust
-      - encoding: UTF8
-      - locale: en_US.UTF-8
-      - data-checksums
+          create_replica_methods:
+            - pgbackrest
+          pgbackrest:            
+            command: /entrypoint.d/bootstrap_replica.sh
+            keep_data: True
+            no_params: True
+          use_pg_rewind: true        
+          parameters:
+            wal_level: replica
+            archive_mode: 'on'
+            archive_command: pgbackrest --stanza=database  archive-push %p 
+            archive_timeout: 60
+        recovery_conf:
+          restore_command: pgbackrest --stanza=database archive-get %f %p 
+          standby_mode: 'on'                
       pg_hba:
       - host all all 0.0.0.0/0 md5
       - host replication ${PATRONI_REPLICATION_USERNAME} ${PATRONI_KUBERNETES_POD_IP}/16 md5
     restapi:
       connect_address: '${PATRONI_KUBERNETES_POD_IP}:8008'
     postgresql:
-      connect_address: '${PATRONI_KUBERNETES_POD_IP}:5432'
+      connect_address: '${PATRONI_KUBERNETES_POD_IP}:5432' 
+      use_unix_socket: true
+      unix_socket_directories: /var/run/postgresql/
       authentication:
         superuser:
           password: '${PATRONI_SUPERUSER_PASSWORD}'
         replication:
-          password: '${PATRONI_REPLICATION_PASSWORD}'
+          password: '${PATRONI_REPLICATION_PASSWORD}'  
     __EOF__
 
     unset PATRONI_SUPERUSER_PASSWORD PATRONI_REPLICATION_PASSWORD
 
-    exec /usr/bin/python /usr/local/bin/patroni /home/postgres/patroni.yml
+    chmod 0700 /var/lib/postgresql/data/pgdata
+
+    exec /usr/bin/python /usr/local/bin/patroni /home/postgres/patroni.yml    
+  bootstrap_cluster.sh: |
+    #!/bin/bash
+    if [ ! -d /var/lib/postgresql/data/pgdata ]; then
+      initdb -D /var/lib/postgresql/data/pgdata
+    fi
+    chmod 0750 -R /var/lib/postgresql/data/pgdata    
+  post_bootstrap.sh: |
+    #!/bin/bash
+    pgbackrest --stanza=database --log-level-console=info stanza-create
+    pgbackrest --stanza=database --log-level-console=info backup
+  bootstrap_replica.sh: |
+    #!/bin/bash
+    if [ ! -d /var/lib/postgresql/data/pgdata ]; then
+      mkdir -p /var/lib/postgresql/data/pgdata
+    fi
+    chmod 0750 -R /var/lib/postgresql/data/pgdata        
+    pgbackrest --log-level-console=info --stanza=database --delta restore
+    
 {{ end }}
