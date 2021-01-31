@@ -28,7 +28,7 @@ jobs:
            push: true
            tags: ironrainio/postgres:12
            context: .
-           file: ./containers/postgres/12/Dockerfile
+           file: containers/postgres/12/Dockerfile
            platforms: linux/amd64
                 
       
