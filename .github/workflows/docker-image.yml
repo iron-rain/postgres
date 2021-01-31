@@ -22,7 +22,7 @@ jobs:
            password: ${{ secrets.DOCKERHUB_TOKEN }}
       - 
         name: ls
-        run: ls -la
+        run: ls -la ../
       - 
          name: Build and push
          id: docker_build
