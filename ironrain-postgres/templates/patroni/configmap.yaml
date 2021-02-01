@@ -20,7 +20,7 @@ data:
       pgbackrest:
         {{ if eq .Values.global.deploymentMode "standby" }}
         command: /entrypoint.d/bootstrap_replica.sh
-        {{ else if .Values.global.restore }}
+        {{ else if .Values.pgbackrest.restore.enabled }}
         command: /entrypoint.d/bootstrap_replica.sh
         {{ else }}
         command: /entrypoint.d/bootstrap_cluster.sh
@@ -93,5 +93,10 @@ data:
       mkdir -p /var/lib/postgresql/data/pgdata
     fi
     chmod 0750 -R /var/lib/postgresql/data/pgdata        
+    {{ if .Values.pgbackrest.restore.pitr.enabled }}
+    pgbackrest --stanza=database --log-level-console=info --type=time "--target={{ .Values.pgbackrest.restore.pitr.targetTime }}" --set={{ .Values.pgbackrest.restore.pitr.targetBackup }} restore
+    {{ else }}
     pgbackrest --log-level-console=info --stanza=database --delta restore
+    {{ end }}
+    
 {{ end }}
