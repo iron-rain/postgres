@@ -20,7 +20,7 @@ data:
     repo1-s3-bucket={{ .Values.pgbackrest.s3.bucket }}    
     repo1-s3-key={{ .Values.pgbackrest.s3.accessKey }}
     repo1-s3-key-secret={{ .Values.pgbackrest.s3.secretKey }}    
-    repo1-s3-region=minio
+    repo1-s3-region={{ .Values.pgbackrest.s3.region }}
     repo1-s3-port={{ .Values.pgbackrest.s3.port }}
     repo1-s3-uri-style={{ .Values.pgbackrest.s3.uriStyle }}
     repo1-type=s3

@@ -12,8 +12,15 @@ spec:
         app: {{ .Values.global.name }}-pgadmin-app
   template:
     metadata:
+      annotations:
+      {{- range $key, $value := .Values.postgres.annotations }}
+        {{ $key }}: {{ $value | quote }}
+      {{- end }}
       labels:
         app: {{ .Values.global.name }}-pgadmin-app
+      {{- range $key, $value := .Values.postgres.labels }}
+        {{ $key }}: {{ $value | quote }}
+      {{- end }}        
     spec:
       securityContext:
         fsGroup: {{ .Values.pgadmin.securityContext.fsGroup }}        
@@ -40,6 +47,13 @@ spec:
             secretKeyRef:
               name: {{ .Values.postgres.defaultAdmin.passwordSecret }}
               key: PGADMIN_PASSWORD
+        resources:
+          requests:
+            cpu: {{ .Values.pgadmin.resources.requests.cpu }}
+            memory: {{ .Values.pgadmin.resources.requests.memory }}
+          limits:
+            cpu: {{ .Values.pgadmin.resources.limits.cpu }}
+            memory: {{ .Values.pgadmin.resources.limits.memory }}                 
         volumeMounts:
         - mountPath: /var/lib/pgadmin
           name: {{ .Values.global.name }}-pgadmin-data

@@ -12,8 +12,16 @@ spec:
         app: {{ .Values.global.name }}-database
   template:
     metadata:
+      annotations:
+      {{- range $key, $value := .Values.postgres.annotations }}
+        {{ $key }}: {{ $value | quote }}
+      {{- end }}
       labels:
         app: {{ .Values.global.name }}-database
+        cluster-name: {{ .Values.global.name }}-cluster
+      {{- range $key, $value := .Values.postgres.labels }}
+        {{ $key }}: {{ $value | quote }}
+      {{- end }}
     spec:
       securityContext:
         fsGroup: {{ .Values.postgres.securityContext.fsGroup }}
@@ -50,6 +58,13 @@ spec:
         imagePullPolicy: {{ .Values.postgres.imagePullPolicy }}
         securityContext:
           runAsUser: {{ .Values.postgres.securityContext.runAsUser }}
+        resources:
+          requests:
+            cpu: {{ .Values.pgbackrest.resources.requests.cpu }}
+            memory: {{ .Values.pgbackrest.resources.requests.memory }}
+          limits:
+            cpu: {{ .Values.pgbackrest.resources.limits.cpu }}
+            memory: {{ .Values.pgbackrest.resources.limits.memory }}          
         volumeMounts:
         - mountPath: /var/lib/postgresql/data
           name: {{ .Values.global.name }}-db-data
@@ -82,6 +97,13 @@ spec:
         ports:
         - containerPort: 5432
           name: tcp-5432
+        resources:
+          requests:
+            cpu: {{ .Values.postgres.resources.requests.cpu }}
+            memory: {{ .Values.postgres.resources.requests.memory }}
+          limits:
+            cpu: {{ .Values.postgres.resources.limits.cpu }}
+            memory: {{ .Values.postgres.resources.limits.memory }}
         env:
           - name: PGDATA
             value: /var/lib/postgresql/data/pgdata
@@ -124,6 +146,13 @@ spec:
         imagePullPolicy: Always
         securityContext:
           runAsUser: {{ .Values.postgres.securityContext.runAsUser }}
+        resources:
+          requests:
+            cpu: {{ .Values.pgbackrest.resources.requests.cpu }}
+            memory: {{ .Values.pgbackrest.resources.requests.memory }}
+          limits:
+            cpu: {{ .Values.pgbackrest.resources.limits.cpu }}
+            memory: {{ .Values.pgbackrest.resources.limits.memory }}                    
         volumeMounts:
         - mountPath: /var/lib/postgresql/data
           name: {{ .Values.global.name }}-db-data
