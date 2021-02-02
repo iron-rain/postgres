@@ -181,9 +181,13 @@ spec:
           - key: bootstrap_replica.sh
             path: bootstrap_replica.sh
             mode: 0755                  
+          - key: restore_cluster.sh
+            path: restore_cluster.sh
+            mode: 0755                       
       - name: pgbackrest-config
         configMap:
           name: {{ .Values.global.name }}-pgbackrest-config 
+          defaultMode: 0777
   volumeClaimTemplates:
   - metadata:
       labels:

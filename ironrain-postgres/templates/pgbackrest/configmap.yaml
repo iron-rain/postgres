@@ -4,29 +4,40 @@ kind: ConfigMap
 metadata:
   name: {{ .Values.global.name }}-pgbackrest-config
 data:
-  pgbackrest.conf: |      
+  pgbackrest.conf: |
+    {{ if .Values.pgbackrest.backup.enabled }}
     [database]
-    db-path=/var/lib/postgresql/data/pgdata
+    db-path=/var/lib/postgresql/data/pgdata        
+    repo1-s3-endpoint={{ .Values.pgbackrest.backup.s3.endpoint }}
+    repo1-s3-verify-tls=n
+    repo1-path=/{{ .Values.pgbackrest.backup.s3.path }}
+    repo1-s3-bucket={{ .Values.pgbackrest.backup.s3.bucket }}    
+    repo1-s3-key={{ .Values.pgbackrest.backup.s3.accessKey }}
+    repo1-s3-key-secret={{ .Values.pgbackrest.backup.s3.secretKey }}    
+    repo1-s3-region={{ .Values.pgbackrest.backup.s3.region }}
+    repo1-s3-port={{ .Values.pgbackrest.backup.s3.port }}
+    repo1-s3-uri-style={{ .Values.pgbackrest.backup.s3.uriStyle }}
+    repo1-type=s3    
+    {{ end }}
 
     [global]
-    {{ if eq .Values.pgbackrest.backupType "volume" }}
-    repo-path=/backup/{{ .Values.pgbackrest.volume.path  }}    
-    {{ end }}
-
-    {{ if eq .Values.pgbackrest.backupType "s3" }}    
-    repo1-s3-endpoint={{ .Values.pgbackrest.s3.endpoint }}
+    retention-full={{ .Values.pgbackrest.common.retentionFull }}
+    retention-diff={{ .Values.pgbackrest.common.retentionDiff }}
+  pgbackrest.restore.conf: |
+    {{ if .Values.pgbackrest.restore.enabled }}
+    [database]
+    db-path=/var/lib/postgresql/data/pgdata
+    repo1-s3-endpoint={{ .Values.pgbackrest.restore.s3.endpoint }}
     repo1-s3-verify-tls=n
-    repo1-path=/{{ .Values.pgbackrest.s3.path }}
-    repo1-s3-bucket={{ .Values.pgbackrest.s3.bucket }}    
-    repo1-s3-key={{ .Values.pgbackrest.s3.accessKey }}
-    repo1-s3-key-secret={{ .Values.pgbackrest.s3.secretKey }}    
-    repo1-s3-region={{ .Values.pgbackrest.s3.region }}
-    repo1-s3-port={{ .Values.pgbackrest.s3.port }}
-    repo1-s3-uri-style={{ .Values.pgbackrest.s3.uriStyle }}
-    repo1-type=s3
-    {{ end }}
-
-    retention-full={{ .Values.pgbackrest.common.retentionFull }}    
+    repo1-path=/{{ .Values.pgbackrest.restore.s3.path }}
+    repo1-s3-bucket={{ .Values.pgbackrest.restore.s3.bucket }}    
+    repo1-s3-key={{ .Values.pgbackrest.restore.s3.accessKey }}
+    repo1-s3-key-secret={{ .Values.pgbackrest.restore.s3.secretKey }}    
+    repo1-s3-region={{ .Values.pgbackrest.restore.s3.region }}
+    repo1-s3-port={{ .Values.pgbackrest.restore.s3.port }}
+    repo1-s3-uri-style={{ .Values.pgbackrest.restore.s3.uriStyle }}
+    repo1-type=s3    
+    {{ end }}  
   backup-schedule.py: |    
     #!/usr/bin/python
     import schedule

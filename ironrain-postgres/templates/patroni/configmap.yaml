@@ -21,7 +21,7 @@ data:
         {{ if eq .Values.global.deploymentMode "standby" }}
         command: /entrypoint.d/bootstrap_replica.sh
         {{ else if .Values.pgbackrest.restore.enabled }}
-        command: /entrypoint.d/bootstrap_replica.sh
+        command: /entrypoint.d/restore_cluster.sh
         {{ else }}
         command: /entrypoint.d/bootstrap_cluster.sh
         {{ end }}
@@ -93,10 +93,17 @@ data:
       mkdir -p /var/lib/postgresql/data/pgdata
     fi
     chmod 0750 -R /var/lib/postgresql/data/pgdata        
+    pgbackrest --log-level-console=info --stanza=database --delta restore    
+  restore_cluster.sh: |
+    #!/bin/bash
+    if [ ! -d /var/lib/postgresql/data/pgdata ]; then
+      mkdir -p /var/lib/postgresql/data/pgdata
+    fi
+    chmod 0750 -R /var/lib/postgresql/data/pgdata    
     {{ if .Values.pgbackrest.restore.pitr.enabled }}
-    pgbackrest --stanza=database --log-level-console=info --type=time "--target={{ .Values.pgbackrest.restore.pitr.targetTime }}" --set={{ .Values.pgbackrest.restore.pitr.targetBackup }} restore
+    pgbackrest --stanza=database --config=/etc/pgbackrest/pgbackrest.restore.conf --log-level-console=info --type=time "--target={{ .Values.pgbackrest.restore.pitr.targetTime }}" --set={{ .Values.pgbackrest.restore.pitr.targetBackup }} restore
     {{ else }}
-    pgbackrest --log-level-console=info --stanza=database --delta restore
-    {{ end }}
+    pgbackrest --log-level-console=info --config=/etc/pgbackrest/pgbackrest.restore.conf  --stanza=database --delta restore
+    {{ end }}        
     
 {{ end }}

@@ -2,13 +2,13 @@
 
 # Global Variables, these are common across all deployments.
 global:
-  name: postgres
+  name: postgres-delta
   # standalone, cluster or standby
   deploymentMode: cluster
 
 # Demo secrets, don't use these in production.
 demo:
-  enabled: true
+  enabled: false
 
 postgres:
 
@@ -112,16 +112,14 @@ pgadmin:
     dataSize: 1Gi
     logSize: 1Gi    
 
-# pgbackrest backups, local volume and S3 are enabled.
+# pgbackrest backups, s3 is enabled.
 pgbackrest:
   enabled: true
 
   # common backup settings
   common:
     retentionFull: 2
-    #retentionDiff: 6
-  # s3 or volume
-  backupType: s3
+    retentionDiff: 6
 
   labels:
     # application: ml
@@ -137,34 +135,51 @@ pgbackrest:
       cpu: 250m
       memory: 512Mi
 
+  backup:
+
+    enabled: true
+
+    s3:
+      endpoint: 192.168.0.179
+      port: 9000
+      bucket: postgres-backups
+      # S3 keys
+      accessKey: minioadmin
+      secretKey: minioadmin
+      # Path in bucket
+      path: 'cluster5'
+      # path or uri, path is for minio.local/<BUCKET>, uri is for <BUCKET>.minio.local
+      uriStyle: path
+      region: minio
+
+
   restore:
     # Restore enabled will restore from the latest available backup
     enabled: true
+
+    s3:
+      endpoint: 192.168.0.179
+      port: 9000
+      bucket: postgres-backups
+      # S3 keys
+      accessKey: minioadmin
+      secretKey: minioadmin
+      # Path in bucket
+      path: 'cluster4'
+      # path or uri, path is for minio.local/<BUCKET>, uri is for <BUCKET>.minio.local
+      uriStyle: path
+      region: minio
+
     # Enabling PITR will restore to a specific point in time
     # Backup info is avaiable in the backup repository under backup.info
     # After a restore the DB will remain read only to allow for any other 
     #  change, run 'select pg_wal_replay_resume();'  as a db admin to make the cluster active
     pitr:
-      enabled: true
+      enabled: false
       # Backup name
       targetBackup: 20210201-081619F_20210201-085318I
       # Can be anytime prior to the backup being taken, wal logs will replay
       # to the latest point before the time
       # Format is 2021-02-01 08:16:08
       targetTime: '2021-02-01 08:53:08'
-
-  s3:
-    endpoint: 192.168.0.179
-    port: 9000
-    bucket: postgres-backups
-    # S3 keys
-    accessKey: minioadmin
-    secretKey: minioadmin
-    # Path in bucket
-    path: 'cluster'
-    # path or uri, path is for minio.local/<BUCKET>, uri is for <BUCKET>.minio.local
-    uriStyle: path
-    region: minio
-
-  volume:
-    path: pg_backups
+  
