@@ -46,9 +46,19 @@ data:
 
     os.system('echo "Backup operator started."')
 
-    def job():
+    def fullBackup():
+      os.system('pgbackrest --stanza=database --log-level-console=info --type=full backup')
+
+    def partialBackup():
       os.system('pgbackrest --stanza=database --log-level-console=info backup')
-    schedule.every(1).hours.do(job)
+
+    {{ range .Values.pgbackrest.schedule.fullBackup.at }}
+    schedule.every().day.at("{{ . }}").do(fullBackup)
+    {{ end }}
+
+    {{ range .Values.pgbackrest.schedule.partialBackup.at }}
+    schedule.every().day.at("{{ . }}").do(partialBackup)
+    {{ end }}
 
     while True:
       schedule.run_pending()

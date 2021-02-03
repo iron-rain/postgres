@@ -8,7 +8,7 @@ global:
 
 # Demo secrets, don't use these in production.
 demo:
-  enabled: false
+  enabled: true
 
 postgres:
 
@@ -118,8 +118,18 @@ pgbackrest:
 
   # common backup settings
   common:
-    retentionFull: 2
-    retentionDiff: 6
+    retentionFull: 24
+    retentionDiff: 12
+
+  schedule:
+    fullBackup:
+      at:
+        - 09:13
+        - 09:15
+    partialBackup:
+      at:
+        - 09:14
+        - 09:16
 
   labels:
     # application: ml
@@ -147,7 +157,7 @@ pgbackrest:
       accessKey: minioadmin
       secretKey: minioadmin
       # Path in bucket
-      path: 'cluster5'
+      path: 'cluster99'
       # path or uri, path is for minio.local/<BUCKET>, uri is for <BUCKET>.minio.local
       uriStyle: path
       region: minio
@@ -155,7 +165,7 @@ pgbackrest:
 
   restore:
     # Restore enabled will restore from the latest available backup
-    enabled: true
+    enabled: false
 
     s3:
       endpoint: 192.168.0.179
