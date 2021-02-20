@@ -42,10 +42,10 @@ data:
             wal_level: replica            
             max_replication_slots: 5            
             archive_mode: 'on'
-            archive_command: pgbackrest --stanza=database  archive-push %p 
+            archive_command: pgbackrest --stanza={{ .Values.pgbackrest.backup.s3.stanza }}  archive-push %p 
             archive_timeout: 60
           recovery_conf:
-            restore_command: pgbackrest --stanza=database archive-get %f %p 
+            restore_command: pgbackrest --stanza={{ .Values.pgbackrest.backup.s3.stanza }} archive-get %f %p 
             standby_mode: 'on'
       pg_hba:
       - host all all 0.0.0.0/0 md5
@@ -85,15 +85,15 @@ data:
     fi
   post_bootstrap.sh: |
     #!/bin/bash
-    pgbackrest --stanza=database --log-level-console=info stanza-create
-    pgbackrest --stanza=database --log-level-console=info backup
+    pgbackrest --stanza={{ .Values.pgbackrest.backup.s3.stanza }} --log-level-console=info stanza-create
+    pgbackrest --stanza={{ .Values.pgbackrest.backup.s3.stanza }} --log-level-console=info backup
   bootstrap_replica.sh: |
     #!/bin/bash
     if [ ! -d /var/lib/postgresql/data/pgdata ]; then
       mkdir -p /var/lib/postgresql/data/pgdata
     fi
     chmod 0750 -R /var/lib/postgresql/data/pgdata        
-    pgbackrest --log-level-console=info --stanza=database --delta restore    
+    pgbackrest --log-level-console=info --stanza={{ .Values.pgbackrest.backup.s3.stanza }} --delta restore    
   restore_cluster.sh: |
     #!/bin/bash
     if [ ! -d /var/lib/postgresql/data/pgdata ]; then
@@ -101,9 +101,9 @@ data:
     fi
     chmod 0750 -R /var/lib/postgresql/data/pgdata    
     {{ if .Values.pgbackrest.restore.pitr.enabled }}
-    pgbackrest --stanza=database --config=/etc/pgbackrest/pgbackrest.restore.conf --log-level-console=info --type=time "--target={{ .Values.pgbackrest.restore.pitr.targetTime }}" --set={{ .Values.pgbackrest.restore.pitr.targetBackup }} restore
+    pgbackrest --stanza={{ .Values.pgbackrest.restore.s3.stanza }} --config=/etc/pgbackrest/pgbackrest.restore.conf --log-level-console=info --type=time "--target={{ .Values.pgbackrest.restore.pitr.targetTime }}" --set={{ .Values.pgbackrest.restore.pitr.targetBackup }} restore
     {{ else }}
-    pgbackrest --log-level-console=info --config=/etc/pgbackrest/pgbackrest.restore.conf  --stanza=database --delta restore
+    pgbackrest --log-level-console=info --config=/etc/pgbackrest/pgbackrest.restore.conf  --stanza={{ .Values.pgbackrest.restore.s3.stanza }} --delta restore
     {{ end }}        
     
 {{ end }}

@@ -6,7 +6,7 @@ metadata:
 data:
   pgbackrest.conf: |
     {{ if .Values.pgbackrest.backup.enabled }}
-    [database]
+    [{{ .Values.pgbackrest.backup.s3.stanza }}]
     db-path=/var/lib/postgresql/data/pgdata        
     repo1-s3-endpoint={{ .Values.pgbackrest.backup.s3.endpoint }}
     repo1-s3-verify-tls=n
@@ -25,7 +25,7 @@ data:
     retention-diff={{ .Values.pgbackrest.common.retentionDiff }}
   pgbackrest.restore.conf: |
     {{ if .Values.pgbackrest.restore.enabled }}
-    [database]
+    [{{ .Values.pgbackrest.restore.s3.stanza }}]
     db-path=/var/lib/postgresql/data/pgdata
     repo1-s3-endpoint={{ .Values.pgbackrest.restore.s3.endpoint }}
     repo1-s3-verify-tls=n
@@ -47,10 +47,10 @@ data:
     os.system('echo "Backup operator started."')
 
     def fullBackup():
-      os.system('pgbackrest --stanza=database --log-level-console=info --type=full backup')
+      os.system('pgbackrest --stanza={{ .Values.pgbackrest.backup.s3.stanza }} --log-level-console=info --type=full backup')
 
     def partialBackup():
-      os.system('pgbackrest --stanza=database --log-level-console=info backup')
+      os.system('pgbackrest --stanza={{ .Values.pgbackrest.backup.s3.stanza }} --log-level-console=info backup')
 
     {{ range .Values.pgbackrest.schedule.fullBackup.at }}
     schedule.every().day.at("{{ . }}").do(fullBackup)

@@ -150,6 +150,7 @@ pgbackrest:
     enabled: true
 
     s3:
+      stanza: database
       endpoint: 192.168.0.179
       port: 9000
       bucket: postgres-backups
@@ -168,6 +169,7 @@ pgbackrest:
     enabled: false
 
     s3:
+      stanza: database
       endpoint: 192.168.0.179
       port: 9000
       bucket: postgres-backups

@@ -14,7 +14,7 @@ data:
   restore.sh: |
     if [ ! -d /var/lib/postgresql/data/pgdata ]; then
       mkdir -p /var/lib/postgresql/data/pgdata
-      pgbackrest --stanza=database --log-level-console=info restore
+      pgbackrest --stanza={{ .Values.pgbackrest.backup.s3.stanza }} --log-level-console=info restore
     else
       echo '/var/lib/postgresql/data/pgdata exists, skipping restore...'
     fi
@@ -26,10 +26,10 @@ data:
     import time
     import os
 
-    os.system('pgbackrest --stanza=database --log-level-console=info stanza-create')
+    os.system('pgbackrest --stanza={{ .Values.pgbackrest.backup.s3.stanza }} --log-level-console=info stanza-create')
 
     def job():
-      os.system('pgbackrest --stanza=database --log-level-console=info backup')
+      os.system('pgbackrest --stanza={{ .Values.pgbackrest.backup.s3.stanza }} --log-level-console=info backup')
     schedule.every(1).hours.do(job)
 
     while True:
@@ -45,7 +45,7 @@ data:
     max_wal_size = 1GB
     min_wal_size = 80MB
     archive_mode = on             
-    archive_command = 'pgbackrest --stanza=database archive-push %p'     
+    archive_command = 'pgbackrest --stanza={{ .Values.pgbackrest.backup.s3.stanza }} archive-push %p'     
     max_wal_senders = 3        
     log_line_prefix = ''                               
     log_timezone = 'Etc/UTC'
