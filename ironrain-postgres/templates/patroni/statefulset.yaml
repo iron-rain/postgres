@@ -60,6 +60,16 @@ spec:
           timeoutSeconds: 5
           successThreshold: 1
           failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            scheme: HTTP
+            path: /liveness
+            port: 8008
+          initialDelaySeconds: 3
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3          
         command:
         - /entrypoint.d/entrypoint.sh      
         ports:

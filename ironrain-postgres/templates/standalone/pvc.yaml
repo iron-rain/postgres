@@ -16,7 +16,6 @@ spec:
 {{ end }}
 ---
 {{ if .Values.pgbackrest.enabled }}
-{{ if eq .Values.pgbackrest.backupType "volume" }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -30,6 +29,5 @@ spec:
   resources:
     requests:
       storage: {{ .Values.postgres.persistence.backupSize }}
-{{ end }}
 {{ end }}
 {{ end }}

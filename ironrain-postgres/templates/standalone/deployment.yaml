@@ -39,11 +39,6 @@ spec:
       - name: entrypoint-scripts
         configMap:
           name: {{ .Values.global.name }}-pgbackrest-entrypoint
-      {{ if eq .Values.pgbackrest.backupType "volume" }}
-      - name: {{ .Values.global.name }}-backup
-        persistentVolumeClaim:
-          claimName: {{ .Values.global.name }}-db-backup
-      {{ end }}
       {{ end }}
       {{ end }}
       initContainers:
@@ -104,6 +99,17 @@ spec:
           limits:
             cpu: {{ .Values.postgres.resources.limits.cpu }}
             memory: {{ .Values.postgres.resources.limits.memory }}
+        livenessProbe:
+          tcpSocket:
+            port: 5432
+          initialDelaySeconds: 60
+          periodSeconds: 10
+        readinessProbe:
+          tcpSocket:
+            port: 5432
+          initialDelaySeconds: 20
+          failureThreshold: 6
+          periodSeconds: 10            
         env:
           - name: PGDATA
             value: /var/lib/postgresql/data/pgdata
@@ -128,10 +134,6 @@ spec:
         - name: entrypoint-scripts
           mountPath: "/entrypoint.d"
           readOnly: true
-        {{ if eq .Values.pgbackrest.backupType "volume" }}
-        - mountPath: /backup
-          name: {{ .Values.global.name }}-backup         
-        {{ end }}   
         command:
           - sh 
           - /entrypoint.d/entrypoint.sh
@@ -157,11 +159,7 @@ spec:
         - mountPath: /var/lib/postgresql/data
           name: {{ .Values.global.name }}-db-data
         - mountPath: /var/run/postgresql/
-          name: postgres-socket
-        {{ if eq .Values.pgbackrest.backupType "volume" }}
-        - mountPath: /backup
-          name: {{ .Values.global.name }}-backup   
-        {{ end }}
+          name: postgres-socket        
         - name: pgbackrest-config
           mountPath: "/etc/pgbackrest"
           readOnly: true 

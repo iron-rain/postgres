@@ -4,7 +4,7 @@
 global:
   name: postgres-delta
   # standalone, cluster or standby
-  deploymentMode: cluster
+  deploymentMode: standalone
 
 # Demo secrets, don't use these in production.
 demo:
@@ -68,7 +68,7 @@ postgres:
 
 
 pgadmin:
-  enabled: true
+  enabled: false
 
   image:
     repository: dpage/pgadmin4
